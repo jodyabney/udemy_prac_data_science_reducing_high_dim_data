@@ -2,10 +2,10 @@
 library(RCurl) # download https data
 urlfile <- 'https://archive.ics.uci.edu/ml/machine-learning-databases/gisette/GISE TTE/gisette_train.data'
 x <- getURL(urlfile, ssl.verifypeer = FALSE)
-gisetteRaw <- read.table(textConnection(x), sep = '', header= FALSE, stringsAsFact ors = FALSE)
+gisetteRaw <- read.table(textConnection(x), sep = '', header= FALSE, stringsAsFactors = FALSE)
 urlfile <- "https://archive.ics.uci.edu/ml/machine-learning-databases/gisette/GISE TTE/gisette_train.labels"
 x <- getURL(urlfile, ssl.verifypeer = FALSE)
-g_labels <- read.table(textConnection(x), sep = '', header = FALSE, stringsAsFacto rs = FALSE)
+g_labels <- read.table(textConnection(x), sep = '', header = FALSE, stringsAsFactors = FALSE)
 
 # build data set
 gisette_df <- cbind(as.data.frame(sapply(gisetteRaw, as.numeric)), cluster=g_labels$V1)
@@ -28,14 +28,17 @@ predictors_names <- setdiff(names(traindf), outcome_name)
 # caret requires a factor of non-numeric value 
 traindf$cluster <- ifelse(traindf$cluster == 1, "yes", "no") 
 traindf$cluster <- as.factor(traindf$cluster )
-fitControl <- trainControl(method='cv', number=3, returnResamp='none', summaryFunction = twoClassSummary, classProbs = TRUE)
+
+fitControl <- trainControl(method='cv', number=3, returnResamp='none', 
+                           summaryFunction = twoClassSummary, classProbs = TRUE)
 glmnet_model <- train(x=traindf[,predictors_names], 
                       y=traindf[,outcome_name], 
                       method='glmnet', 
-                      metric='roc',
-                      trControl=fitControl)
+                      metric='roc', trControl=fitControl)
 
 print(glmnet_model)
+
+plot(varImp(glmnet_model, scale=FALSE))
 
 # caret requires a factor of non-numeric value
 testdf$cluster <- ifelse(testdf$cluster == 1, "yes", "no")
@@ -54,6 +57,7 @@ results <- data.frame(row.names(vimp$importance),vimp$importance$Overall)
 results$VariableName <- rownames(vimp)
 colnames(results) <- c('VariableName','Weight')
 results <- results[order(results$Weight),]
+results <- results[(results$Weight != 0),]
 
 # we do not want factors, just characters
 results$VariableName <- as.character(results$VariableName)
